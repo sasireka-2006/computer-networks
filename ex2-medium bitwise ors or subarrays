@@ -1,0 +1,80 @@
+#include <stdlib.h>
+
+// A simple structure for a hash set to eliminate duplicates
+typedef struct {
+    int* data;
+    int size;
+    int capacity;
+} Set;
+
+void initSet(Set* s, int cap) {
+    s->data = (int*)malloc(cap * sizeof(int));
+    s->size = 0;
+    s->capacity = cap;
+}
+
+// Comparison function for sorting
+int compare(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
+
+// Removes duplicate values from a sorted array
+int eliminateDuplicates(int* arr, int size) {
+    if (size == 0) return 0;
+    int uniqueIdx = 0;
+    for (int i = 1; i < size; i++) {
+        if (arr[i] != arr[uniqueIdx]) {
+            uniqueIdx++;
+            arr[uniqueIdx] = arr[i];
+        }
+    }
+    return uniqueIdx + 1;
+}
+
+int subarrayBitwiseORs(int* arr, int arrSize) {
+    // Global set to keep track of all unique bitwise OR results found so far
+    // Given the 30-bit bound, a large pre-allocated array acts as a fast storage pool
+    int maxPossibleResults = arrSize * 32;
+    int* allResults = (int*)malloc(maxPossibleResults * sizeof(int));
+    int allCount = 0;
+    
+    // Arrays to track OR values ending at the current position
+    // Since any bitwise OR sequence has <= 32 distinct values, a size of 35 is perfectly safe
+    int curORs[35];
+    int curSize = 0;
+    
+    for (int i = 0; i < arrSize; i++) {
+        int nextORs[35];
+        int nextSize = 0;
+        
+        // Every subarray starting and ending at index i has the value arr[i]
+        nextORs[nextSize++] = arr[i];
+        allResults[allCount++] = arr[i];
+        
+        // Combine the current element with all valid OR values from the previous step
+        for (int j = 0; j < curSize; j++) {
+            int newOR = curORs[j] | arr[i];
+            
+            // Only add if it's different from the last added value to keep nextORs distinct
+            if (newOR != nextORs[nextSize - 1]) {
+                nextORs[nextSize++] = newOR;
+                allResults[allCount++] = newOR;
+            }
+        }
+        
+        // Copy nextORs to curORs for the next iteration
+        curSize = nextSize;
+        for (int j = 0; j < curSize; j++) {
+            curORs[j] = nextORs[j];
+        }
+    }
+    
+    // Sort all collected results to find unique elements
+    qsort(allResults, allCount, sizeof(int), compare);
+    int uniqueCount = eliminateDuplicates(allResults, allCount);
+    
+    // Clean up allocated dynamic memory
+    free(allResults);
+    
+    return uniqueCount;
+}
