@@ -1,0 +1,23 @@
+int totalHammingDistance(int* nums, int numsSize) {
+    int total_distance = 0;
+    
+    // Check each bit position from 0 to 29 (since 10^9 fits within 30 bits)
+    for (int i = 0; i < 30; i++) {
+        int count_ones = 0;
+        
+        // Count how many numbers have the i-th bit set to 1
+        for (int j = 0; j < numsSize; j++) {
+            if ((nums[j] >> i) & 1) {
+                count_ones++;
+            }
+        }
+        
+        // Count of numbers with the i-th bit set to 0
+        int count_zeros = numsSize - count_ones;
+        
+        // Total pairs with different bits at this position
+        total_distance += count_ones * count_zeros;
+    }
+    
+    return total_distance;
+}
