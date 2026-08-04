@@ -1,0 +1,13 @@
+int hammingDistance(int x, int y) {
+    // XOR finds all positions where bits are different
+    int diff = x ^ y;
+    int count = 0;
+    
+    // Count the number of set bits (1s)
+    while (diff > 0) {
+        count += diff & 1; // Check if the last bit is 1
+        diff >>= 1;        // Shift right to check the next bit
+    }
+    
+    return count;
+}
