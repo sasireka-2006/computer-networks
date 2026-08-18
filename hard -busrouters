@@ -1,0 +1,81 @@
+#include <stdlib.h>
+
+int numBusesToDestination(int** routes, int routesSize,
+                          int* routesColSize, int source, int target)
+{
+    if (source == target)
+        return 0;
+
+    int maxStops = 100000;
+
+    int *visitedStop = calloc(maxStops, sizeof(int));
+    int *visitedBus = calloc(routesSize, sizeof(int));
+    int *queue = malloc(maxStops * sizeof(int));
+
+    int front = 0;
+    int rear = 0;
+    int buses = 0;
+
+    queue[rear++] = source;
+    visitedStop[source] = 1;
+
+    while (front < rear)
+    {
+        int size = rear - front;
+        buses++;
+
+        while (size--)
+        {
+            int stop = queue[front++];
+
+            for (int i = 0; i < routesSize; i++)
+            {
+                if (visitedBus[i])
+                    continue;
+
+                int found = 0;
+
+                // Check whether bus i contains current stop
+                for (int j = 0; j < routesColSize[i]; j++)
+                {
+                    if (routes[i][j] == stop)
+                    {
+                        found = 1;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    continue;
+
+                visitedBus[i] = 1;
+
+                // Visit all stops in this bus route
+                for (int j = 0; j < routesColSize[i]; j++)
+                {
+                    int nextStop = routes[i][j];
+
+                    if (nextStop == target)
+                    {
+                        free(visitedStop);
+                        free(visitedBus);
+                        free(queue);
+                        return buses;
+                    }
+
+                    if (!visitedStop[nextStop])
+                    {
+                        visitedStop[nextStop] = 1;
+                        queue[rear++] = nextStop;
+                    }
+                }
+            }
+        }
+    }
+
+    free(visitedStop);
+    free(visitedBus);
+    free(queue);
+
+    return -1;
+}
