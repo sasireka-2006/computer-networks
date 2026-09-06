@@ -1,0 +1,209 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+// Structure for client
+struct FileClient
+{
+    int socket;
+    struct sockaddr_in server_address;
+    char filename[100];
+    char buffer[BUFFER_SIZE];
+};
+
+// Function declarations
+int createClientSocket();
+void connectToServer(struct FileClient *client);
+void requestFile(struct FileClient *client);
+void receiveFile(struct FileClient *client);
+
+int main()
+{
+    struct FileClient client;
+
+    // Create socket
+    client.socket = createClientSocket();
+
+    // Connect to server
+    connectToServer(&client);
+
+    printf("====================================\n");
+    printf("          FILE CLIENT\n");
+    printf("====================================\n");
+
+    // Request file
+    requestFile(&client);
+
+    // Close socket
+    close(client.socket);
+
+    printf("\nConnection closed.\n");
+
+    return 0;
+}
+
+// Create client socket
+int createClientSocket()
+{
+    int client_socket;
+
+    client_socket = socket(
+        AF_INET,
+        SOCK_STREAM,
+        0
+    );
+
+    if (client_socket < 0)
+    {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    return client_socket;
+}
+
+// Connect to server
+void connectToServer(struct FileClient *client)
+{
+    client->server_address.sin_family = AF_INET;
+
+    client->server_address.sin_port =
+        htons(PORT);
+
+    client->server_address.sin_addr.s_addr =
+        inet_addr("127.0.0.1");
+
+    if (connect(
+        client->socket,
+        (struct sockaddr *)&client->server_address,
+        sizeof(client->server_address)
+    ) < 0)
+    {
+        perror("Connection failed");
+        close(client->socket);
+        exit(1);
+    }
+
+    printf("Connected to file server.\n");
+}
+
+// Request file
+void requestFile(struct FileClient *client)
+{
+    printf("\nEnter filename: ");
+
+    fgets(
+        client->filename,
+        sizeof(client->filename),
+        stdin
+    );
+
+    // Remove newline
+    client->filename[
+        strcspn(client->filename, "\r\n")
+    ] = '\0';
+
+    // Send filename to server
+    send(
+        client->socket,
+        client->filename,
+        strlen(client->filename),
+        0
+    );
+
+    printf("\nFile request sent.\n");
+
+    // Receive file
+    receiveFile(client);
+}
+
+// Receive file
+void receiveFile(struct FileClient *client)
+{
+    FILE *file;
+    int bytes_received;
+    int first_message = 1;
+
+    while (1)
+    {
+        bytes_received = recv(
+            client->socket,
+            client->buffer,
+            BUFFER_SIZE,
+            0
+        );
+
+        if (bytes_received <= 0)
+        {
+            break;
+        }
+
+        /*
+         * First message tells whether
+         * the file exists.
+         */
+        if (first_message)
+        {
+            client->buffer[bytes_received] = '\0';
+
+            if (strcmp(
+                client->buffer,
+                "FILE_NOT_FOUND"
+            ) == 0)
+            {
+                printf("\nFile not present on server.\n");
+                return;
+            }
+
+            if (strcmp(
+                client->buffer,
+                "FILE_FOUND"
+            ) == 0)
+            {
+                printf("\nFile found on server.\n");
+
+                // Open file for writing
+                file = fopen(
+                    client->filename,
+                    "wb"
+                );
+
+                if (file == NULL)
+                {
+                    perror("Unable to create file");
+                    return;
+                }
+
+                first_message = 0;
+                continue;
+            }
+        }
+
+        // Write received data
+        fwrite(
+            client->buffer,
+            1,
+            bytes_received,
+            file
+        );
+    }
+
+    if (!first_message)
+    {
+        fclose(file);
+
+        printf(
+            "File received successfully.\n"
+        );
+
+        printf(
+            "Saved as: %s\n",
+            client->filename
+        );
+    }
+}
