@@ -1,0 +1,150 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+// Structure for ARP client
+struct ARPClient
+{
+    int socket;
+    struct sockaddr_in server_address;
+    char ip[20];
+    char mac[20];
+};
+
+// Function declarations
+int createClientSocket();
+void connectToServer(struct ARPClient *client);
+void requestMAC(struct ARPClient *client);
+
+int main()
+{
+    struct ARPClient client;
+
+    // Create socket
+    client.socket = createClientSocket();
+
+    // Connect to server
+    connectToServer(&client);
+
+    printf("====================================\n");
+    printf("           ARP CLIENT\n");
+    printf("====================================\n");
+
+    // Request MAC address
+    requestMAC(&client);
+
+    // Close socket
+    close(client.socket);
+
+    printf("\nConnection closed.\n");
+
+    return 0;
+}
+
+// Create client socket
+int createClientSocket()
+{
+    int client_socket;
+
+    client_socket = socket(
+        AF_INET,
+        SOCK_STREAM,
+        0
+    );
+
+    if (client_socket < 0)
+    {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    return client_socket;
+}
+
+// Connect to server
+void connectToServer(struct ARPClient *client)
+{
+    client->server_address.sin_family = AF_INET;
+
+    client->server_address.sin_port =
+        htons(PORT);
+
+    client->server_address.sin_addr.s_addr =
+        inet_addr("127.0.0.1");
+
+    if (connect(
+        client->socket,
+        (struct sockaddr *)&client->server_address,
+        sizeof(client->server_address)
+    ) < 0)
+    {
+        perror("Connection failed");
+        close(client->socket);
+        exit(1);
+    }
+
+    printf("Connected to ARP server.\n");
+}
+
+// Request MAC address
+void requestMAC(struct ARPClient *client)
+{
+    int bytes;
+
+    // Get IP from user
+    printf("\nEnter IP address: ");
+
+    fgets(
+        client->ip,
+        sizeof(client->ip),
+        stdin
+    );
+
+    client->ip[
+        strcspn(client->ip, "\r\n")
+    ] = '\0';
+
+    // Send IP to server
+    send(
+        client->socket,
+        client->ip,
+        strlen(client->ip),
+        0
+    );
+
+    printf("\nARP Request sent for IP: %s\n",
+           client->ip);
+
+    // Receive MAC address
+    memset(
+        client->mac,
+        0,
+        sizeof(client->mac)
+    );
+
+    bytes = recv(
+        client->socket,
+        client->mac,
+        sizeof(client->mac) - 1,
+        0
+    );
+
+    if (bytes <= 0)
+    {
+        printf("Server disconnected.\n");
+        return;
+    }
+
+    client->mac[bytes] = '\0';
+
+    printf("\nARP Reply received.\n");
+    printf("IP Address  : %s\n",
+           client->ip);
+    printf("MAC Address : %s\n",
+           client->mac);
+}
