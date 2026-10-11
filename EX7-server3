@@ -1,0 +1,174 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define PORT 8082
+#define BUFFER_SIZE 1024
+
+void createSocket(int *sockfd)
+{
+    *sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (*sockfd < 0)
+    {
+        perror("Socket creation failed");
+        exit(1);
+    }
+}
+
+void bindServer(int sockfd, char *ip)
+{
+    struct sockaddr_in server;
+
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, ip, &server.sin_addr) <= 0)
+    {
+        perror("Invalid IP address");
+        exit(1);
+    }
+
+    if (bind(sockfd,
+             (struct sockaddr *)&server,
+             sizeof(server)) < 0)
+    {
+        perror("Bind failed");
+        exit(1);
+    }
+}
+
+void sendFile(int clientfd)
+{
+    char filename[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+
+    memset(filename, 0, sizeof(filename));
+
+    recv(clientfd, filename, sizeof(filename) - 1, 0);
+
+    filename[strcspn(filename, "\n")] = '\0';
+
+    printf("Requested file: %s\n", filename);
+
+    FILE *file = fopen(filename, "r");
+
+    if (file == NULL)
+    {
+        strcpy(buffer, "File not found");
+
+        printf("File not found\n");
+
+        send(clientfd,
+             buffer,
+             strlen(buffer),
+             0);
+
+        return;
+    }
+
+    printf("File found. Sending content...\n");
+
+    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    {
+        send(clientfd,
+             buffer,
+             strlen(buffer),
+             0);
+    }
+
+    fclose(file);
+
+    printf("File sent successfully\n");
+}
+
+void handleClient(int clientfd, struct sockaddr_in client)
+{
+    char clientIP[INET_ADDRSTRLEN];
+
+    inet_ntop(AF_INET,
+              &client.sin_addr,
+              clientIP,
+              sizeof(clientIP));
+
+    printf("\n--------------------------------\n");
+    printf("Client connected\n");
+    printf("Client IP   : %s\n", clientIP);
+    printf("Client Port : %d\n", ntohs(client.sin_port));
+    printf("Socket FD   : %d\n", clientfd);
+    printf("--------------------------------\n");
+
+    sendFile(clientfd);
+
+    close(clientfd);
+
+    printf("Client %s disconnected\n", clientIP);
+}
+
+void runServer(char *ip)
+{
+    int sockfd;
+    int clientfd;
+
+    struct sockaddr_in client;
+    socklen_t length;
+
+    createSocket(&sockfd);
+
+    bindServer(sockfd, ip);
+
+    if (listen(sockfd, 5) < 0)
+    {
+        perror("Listen failed");
+        exit(1);
+    }
+
+    printf("=================================\n");
+    printf("      CONCURRENT FTP SERVER\n");
+    printf("=================================\n");
+    printf("Server IP   : %s\n", ip);
+    printf("Server Port : %d\n", PORT);
+    printf("Waiting for clients...\n");
+
+    while (1)
+    {
+        length = sizeof(client);
+
+        clientfd = accept(sockfd,
+                          (struct sockaddr *)&client,
+                          &length);
+
+        if (clientfd < 0)
+        {
+            perror("Accept failed");
+            continue;
+        }
+
+        if (fork() == 0)
+        {
+            close(sockfd);
+
+            handleClient(clientfd, client);
+
+            exit(0);
+        }
+
+        close(clientfd);
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc != 2)
+    {
+        printf("Usage: %s <server_ip>\n", argv[0]);
+        return 1;
+    }
+
+    runServer(argv[1]);
+
+    return 0;
+}
