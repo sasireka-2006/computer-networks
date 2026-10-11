@@ -1,0 +1,164 @@
+cd ~/ns3/ns-allinone-3.48/ns-3.48
+vi cwnd.dat
+ gnuplot plot_cwnd.gp
+explorer.exe
+
+./ns3 run hello-simulator
+
+cd ~/ns3/ns-allinone-3.48/ns-3.48
+
+./ns3 run network_graph
+
+gnuplot plot_throughput.gp
+
+Number of nodes:       2
+Link data rate:        10
+Link delay:            2
+Traffic rate:          5
+Packet size:           1024
+Error rate:            0
+Simulation time:       10
+
+./ns3 run network_graph
+
+gnuplot plot_throughput.gp
+
+SAVE GRAPGGGHH
+cp throughput.png graph_normal.png
+
+TEST2:
+Number of nodes:       2
+Link data rate:        1
+Link delay:            10
+Traffic rate:          5
+Packet size:           1024
+Error rate:            0
+Simulation time:       10
+
+./ns3 run network_graph
+
+gnuplot plot_throughput.gp
+
+cp throughput.png graph_congestion.png
+
+TEST3:
+
+Number of nodes:       2
+Link data rate:        10
+Link delay:            2
+Traffic rate:          5
+Packet size:           1024
+Error rate:            5
+Simulation time:       10
+
+./ns3 run network_graph
+
+gnuplot plot_throughput.gp
+
+
+| Experiment | Link | Traffic | Error |
+|---|---:|---:|---:|
+| **1. Normal** | 10 Mbps | 5 Mbps | 0% |
+| **2. Congestion** | 1 Mbps | 5 Mbps | 0% |
+| **3. Error** | 10 Mbps | 5 Mbps | 5% |
+
+
+🟢 Graph 1 — Normal network
+Link = 10 Mbps
+Traffic = 5 Mbps
+Error = 0%
+
+Your first graph was around:
+5.13–5.14 Mbps
+The graph is almost flat.
+Inference:
+Since the link capacity is greater than the traffic rate, the network can handle the offered traffic. Therefore, throughput remains stable around the traffic rate.
+
+🔴 Graph 2 — Congestion
+Link = 1 Mbps
+Traffic = 5 Mbps
+Error = 0%
+
+Here:
+5 Mbps traffic
+       ↓
+       ↓
+1 Mbps link
+
+The sender is trying to send 5 Mbps, but the link can carry only 1 Mbps.
+So the throughput becomes approximately 1 Mbps.
+Your earlier complete simulation gave:
+Throughput ≈ 0.9962 Mbps
+Packet loss ≈ 80.61%
+Average delay ≈ 2646 ms
+
+Inference:
+When the traffic rate exceeds the link capacity, congestion occurs. Throughput becomes limited by the link capacity, while packet loss and delay increase significantly.
+
+🔥 This is the biggest difference from Graph 1.
+🟠 Graph 3 — Error
+Link = 10 Mbps
+Traffic = 5 Mbps
+Error = 5%
+
+Here the link has enough capacity:
+10 Mbps link
+5 Mbps traffic
+
+So there is no capacity problem.
+But we intentionally introduce packet errors.
+Your earlier complete simulation gave:
+Throughput ≈ 4.8907 Mbps
+Packet loss ≈ 4.8311%
+
+Compared with normal:
+Normal → ~5.1369 Mbps
+Error  → ~4.8907 Mbps
+
+Inference:
+The link has sufficient capacity, but packet errors cause some packets to be lost. Therefore, throughput decreases and packet loss increases compared with the normal network.
+
+🔥 The easiest way to remember the three graphs
+NORMAL
+Capacity > Traffic
+10 Mbps > 5 Mbps
+
+➡️ Stable throughput
+➡️ Very low loss
+➡️ Low delay
+CONGESTION
+Traffic > Capacity
+5 Mbps > 1 Mbps
+
+➡️ Throughput limited to ~1 Mbps
+➡️ HUGE packet loss
+➡️ HUGE delay
+ERROR
+Capacity > Traffic + errors
+10 Mbps > 5 Mbps
+
+but:
+5% packet error
+
+➡️ Throughput slightly decreases
+➡️ Packet loss increases
+➡️ Capacity itself is not the problem
+📝 EXACT OBSERVATION YOU CAN WRITE
+Observation
+Three network conditions were studied using NS-3: normal transmission, congestion and packet error conditions.
+
+In the normal condition, the link data rate was 10 Mbps and traffic rate was 5 Mbps with 0% error. The throughput remained approximately stable around 5 Mbps.
+
+In the congestion condition, the link data rate was reduced to 1 Mbps while the traffic rate remained 5 Mbps. Since the traffic rate exceeded the link capacity, throughput was limited to approximately 1 Mbps and packet loss and delay increased significantly.
+
+In the error condition, the link data rate was 10 Mbps and traffic rate was 5 Mbps, but a 5% packet error rate was introduced. The throughput decreased compared with the normal condition and packet loss increased.
+
+Final inference:
+The graphs demonstrate that throughput depends on available link capacity and packet transmission errors. When traffic exceeds link capacity, congestion causes severe packet loss and delay. When packet errors are introduced, packet loss increases and throughput decreases even though sufficient link capacity is available.
+
+That's the main answer your three graphs are proving, dude. 🔥
+And for your notebook, I'd put the three C calculation programs + observation table + these three graph inferences. That gives you both the strict C requirement and the actual NS-3 practical explanation without pretending NS-3 itself is C.
+
+
+
+
